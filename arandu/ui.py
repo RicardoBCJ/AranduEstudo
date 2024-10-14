@@ -3,6 +3,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QSize, QPropertyAnimation, Qt
 import os
 import subprocess
+from converter import convert_pdf_to_epub, validate_epub  # Import from the new module
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -35,47 +36,52 @@ class MainWindow(QMainWindow):
         self.apply_stylesheet()
 
     def create_sidebar(self):
-        # Create sidebar widget and layout
         sidebar = QWidget()
         sidebar_layout = QVBoxLayout()
 
-        # Toggle button
+        # Menu toggle button
         toggle_button = QPushButton("≡ Menu")
         toggle_button.clicked.connect(self.toggle_sidebar)
         sidebar_layout.addWidget(toggle_button)
 
-        # Initialize buttons with icons
-        self.library_button = QPushButton()
-        self.converter_button = QPushButton()
-
+        # Only two buttons: Library and Converter
+        self.library_button = QPushButton("Library")
+        self.library_button.setIcon(QIcon("assets/icons/library.svg"))
+        self.library_button.clicked.connect(lambda: self.switch_section(0))
         sidebar_layout.addWidget(self.library_button)
+
+        self.converter_button = QPushButton("Converter")
+        self.converter_button.setIcon(QIcon("assets/icons/converter.svg"))
+        self.converter_button.clicked.connect(lambda: self.switch_section(1))
         sidebar_layout.addWidget(self.converter_button)
 
+        # Spacer to push buttons to the top
         sidebar_layout.addStretch()
         sidebar.setLayout(sidebar_layout)
         sidebar.setFixedWidth(200)
 
-        self.library_button = QPushButton("Library")
-        self.library_button.clicked.connect(lambda: self.switch_section(0))  # Switch to Library (index 0)
-        sidebar_layout.addWidget(self.library_button)
-
-        self.converter_button = QPushButton("Converter")
-        self.converter_button.clicked.connect(lambda: self.switch_section(1))  # Switch to Converter (index 1)
-        sidebar_layout.addWidget(self.converter_button)
-
-        # Initial button state (with text and icons)
-        self.update_sidebar_buttons(show_text=True)
-
         return sidebar
     
     def open_pdf_dialog(self):
-        # Open file dialog to select a PDF file for conversion
+        # Open file dialog to select PDF or EPUB file for conversion
         options = QFileDialog.Options()
-        file_name, _ = QFileDialog.getOpenFileName(self, "Select PDF to Convert", "", "PDF Files (*.pdf);;All Files (*)", options=options)
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select PDF or EPUB", "", "PDF Files (*.pdf);;EPUB Files (*.epub);;All Files (*)", options=options)
 
         if file_name:
-            # Call the conversion function (we will handle the conversion here)
-            print(f"Selected PDF: {file_name}")
+            # If it's a PDF, convert it to EPUB
+            if file_name.endswith('.pdf'):
+                output_dir = "path/to/library"  # The directory where EPUBs will be saved
+                epub_path = convert_pdf_to_epub(file_name, output_dir)
+                if epub_path:
+                    print(f"PDF converted to EPUB: {epub_path}")
+                    # Add to library here
+            elif file_name.endswith('.epub'):
+                # Validate the EPUB and add it to the library
+                if validate_epub(file_name):
+                    print(f"Valid EPUB: {file_name}")
+                    # Add to library here
+                else:
+                    print(f"Invalid EPUB file: {file_name}")
 
     def create_content_widget(self):
         # Create a stacked widget to handle multiple views (Library, Converter)
