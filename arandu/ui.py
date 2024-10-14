@@ -1,7 +1,7 @@
 # arandu/ui.py
 from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QListWidget, QStackedWidget, QPushButton, QFileDialog, QSplitter
-from PyQt5.QtGui import QIcon 
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import QSize, Qt  # Ensure Qt is imported for alignment and other Qt features
 import os
 from converter import convert_pdf_to_epub, validate_epub, ensure_library_folder
 from library import load_library_books
@@ -12,6 +12,10 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("Arandu - Study Helper")
         self.setGeometry(200, 100, 1200, 800)
+
+        # Path to the library folder
+        self.library_path = os.path.join(os.path.dirname(__file__), "library")
+        ensure_library_folder(self.library_path)  # Ensure library folder exists
 
         # Create main layout and sidebar
         layout = QHBoxLayout()
@@ -30,9 +34,8 @@ class MainWindow(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
-        # Path to the library folder
-        self.library_path = os.path.join(os.path.dirname(__file__), "library")
-        ensure_library_folder(self.library_path)  # Ensure library folder exists
+        # Apply the stylesheet for appearance
+        self.apply_stylesheet()
 
     def create_sidebar(self):
         sidebar = QWidget()
@@ -120,3 +123,34 @@ class MainWindow(QMainWindow):
             self.sidebar_widget.setFixedWidth(50)  # Collapse to 50px
         else:
             self.sidebar_widget.setFixedWidth(200)  # Expand to 200px
+
+    def apply_stylesheet(self):
+        style_sheet = """
+            QMainWindow {
+                background-color: #2c2c2c;
+            }
+            QPushButton {
+                background-color: #2c2c2c;
+                color: #f0f0f0;
+                border: 1px solid #3e3e3e;
+                border-radius: 15px;
+                padding: 10px;
+                font-size: 14px;
+            }
+            QPushButton#menuButton {
+                border: none;
+                font-size: 16px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3e3e3e;
+            }
+            QTextEdit {
+                background-color: #3e3e3e;
+                border: 1px solid #d3d3d3;
+                padding: 10px;
+                font-size: 16px;
+                color: #ffffff;
+            }
+        """
+        self.setStyleSheet(style_sheet)
