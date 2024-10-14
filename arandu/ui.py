@@ -58,18 +58,35 @@ class MainWindow(QMainWindow):
         self.update_sidebar_buttons(show_text=True)
 
         return sidebar
+    
+    def open_pdf_dialog(self):
+        # Open file dialog to select a PDF file for conversion
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select PDF to Convert", "", "PDF Files (*.pdf);;All Files (*)", options=options)
+
+        if file_name:
+            # Call the conversion function (we will handle the conversion here)
+            print(f"Selected PDF: {file_name}")
 
     def create_content_widget(self):
-        stacked_widget = QStackedWidget()
-        library_view = QTextEdit()
-        library_view.setText("Library Section: Display your books here")
-        stacked_widget.addWidget(library_view)
+        # Create a stacked widget to switch between Library, Converter, and Reader sections
+        self.stacked_widget = QStackedWidget()
 
-        converter_view = QTextEdit()
-        converter_view.setText("Converter Section: Drag and drop PDFs here to convert to EPUB")
-        stacked_widget.addWidget(converter_view)
+        # Create the library view (placeholder for now)
+        self.library_view = QTextEdit()
+        self.library_view.setText("Library Section: Display your books here")
+        self.stacked_widget.addWidget(self.library_view)
 
-        return stacked_widget
+        # Create the converter view (placeholder for now)
+        self.converter_view = QTextEdit()
+        self.converter_view.setText("Converter Section: Drag and drop PDFs here to convert to EPUB")
+        self.stacked_widget.addWidget(self.converter_view)
+
+        return self.stacked_widget
+    
+    def switch_section(self, index):
+        # Switch between different sections (Library, Converter, etc.)
+        self.stacked_widget.setCurrentIndex(index)
 
     def toggle_sidebar(self):
         # Directly set the fixed width of the sidebar (no animation)
