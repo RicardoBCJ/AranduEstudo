@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QTextEdit, QToolBar, QAction, QFileDialog, QSplitter, QPushButton, QStackedWidget
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QTextEdit, QToolBar, QAction, QFileDialog, QSplitter, QPushButton, QStackedWidget,  QListWidget
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QSize, QPropertyAnimation, Qt
 import os
@@ -39,19 +39,24 @@ class MainWindow(QMainWindow):
         sidebar = QWidget()
         sidebar_layout = QVBoxLayout()
 
+        # Absolute path for icons
+        icon_path_library = os.path.join(os.path.dirname(__file__), "assets/icons/library.svg")
+        icon_path_converter = os.path.join(os.path.dirname(__file__), "assets/icons/converter.svg")
+
         # Menu toggle button
         toggle_button = QPushButton("≡ Menu")
         toggle_button.clicked.connect(self.toggle_sidebar)
         sidebar_layout.addWidget(toggle_button)
 
-        # Only two buttons: Library and Converter
+        # Library button with icon
         self.library_button = QPushButton("Library")
-        self.library_button.setIcon(QIcon("assets/icons/library.svg"))
+        self.library_button.setIcon(QIcon(icon_path_library))
         self.library_button.clicked.connect(lambda: self.switch_section(0))
         sidebar_layout.addWidget(self.library_button)
 
+        # Converter button with icon
         self.converter_button = QPushButton("Converter")
-        self.converter_button.setIcon(QIcon("assets/icons/converter.svg"))
+        self.converter_button.setIcon(QIcon(icon_path_converter))
         self.converter_button.clicked.connect(lambda: self.switch_section(1))
         sidebar_layout.addWidget(self.converter_button)
 
@@ -84,26 +89,38 @@ class MainWindow(QMainWindow):
                     print(f"Invalid EPUB file: {file_name}")
 
     def create_content_widget(self):
-        # Create a stacked widget to handle multiple views (Library, Converter)
         self.stacked_widget = QStackedWidget()
 
-        # Library view (Placeholder for now)
-        self.library_view = QTextEdit()
-        self.library_view.setText("Library Section: Display your books here")
+        # Create Library view (QListWidget to display books)
+        self.library_view = QListWidget()
+        self.load_library_books()  # Load the books from the library folder
+        self.library_view.itemClicked.connect(self.open_book)
         self.stacked_widget.addWidget(self.library_view)
 
-        # Converter view (New section)
-        converter_widget = QWidget()  # Main widget for Converter view
-        converter_layout = QVBoxLayout()  # Layout for Converter view
-        convert_button = QPushButton("Select PDF to Convert")  # Button to open file dialog
-        convert_button.clicked.connect(self.open_pdf_dialog)  # Connect button to file dialog function
+        # Create Converter view (as before)
+        converter_widget = QWidget()
+        converter_layout = QVBoxLayout()
+        convert_button = QPushButton("Select PDF to Convert")
+        convert_button.clicked.connect(self.open_pdf_dialog)
         converter_layout.addWidget(convert_button)
-
-        # Set the layout for the converter widget
         converter_widget.setLayout(converter_layout)
         self.stacked_widget.addWidget(converter_widget)
 
         return self.stacked_widget
+
+    def load_library_books(self):
+        # Load EPUB files from the library folder and add them to the QListWidget
+        library_path = os.path.join(os.path.dirname(__file__), "library")
+        for file_name in os.listdir(library_path):
+            if file_name.endswith(".epub"):
+                item = QListWidgetItem(file_name)
+                self.library_view.addItem(item)
+
+    def open_book(self, item):
+        epub_file = item.text()
+        epub_path = os.path.join(os.path.dirname(__file__), "library", epub_file)
+        print(f"Opening book: {epub_path}")
+        # You can later implement the reader functionality here
     
     def open_pdf_dialog(self):
             # Open a file dialog to select a PDF file for conversion
