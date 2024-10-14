@@ -2,6 +2,7 @@ from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QTex
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QSize, QPropertyAnimation, Qt
 import os
+import subprocess
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -54,6 +55,14 @@ class MainWindow(QMainWindow):
         sidebar.setLayout(sidebar_layout)
         sidebar.setFixedWidth(200)
 
+        self.library_button = QPushButton("Library")
+        self.library_button.clicked.connect(lambda: self.switch_section(0))  # Switch to Library (index 0)
+        sidebar_layout.addWidget(self.library_button)
+
+        self.converter_button = QPushButton("Converter")
+        self.converter_button.clicked.connect(lambda: self.switch_section(1))  # Switch to Converter (index 1)
+        sidebar_layout.addWidget(self.converter_button)
+
         # Initial button state (with text and icons)
         self.update_sidebar_buttons(show_text=True)
 
@@ -69,24 +78,51 @@ class MainWindow(QMainWindow):
             print(f"Selected PDF: {file_name}")
 
     def create_content_widget(self):
-        # Create a stacked widget to switch between Library, Converter, and Reader sections
+        # Create a stacked widget to handle multiple views (Library, Converter)
         self.stacked_widget = QStackedWidget()
 
-        # Create the library view (placeholder for now)
+        # Library view (Placeholder for now)
         self.library_view = QTextEdit()
         self.library_view.setText("Library Section: Display your books here")
         self.stacked_widget.addWidget(self.library_view)
 
-        # Create the converter view (placeholder for now)
-        self.converter_view = QTextEdit()
-        self.converter_view.setText("Converter Section: Drag and drop PDFs here to convert to EPUB")
-        self.stacked_widget.addWidget(self.converter_view)
+        # Converter view (New section)
+        converter_widget = QWidget()  # Main widget for Converter view
+        converter_layout = QVBoxLayout()  # Layout for Converter view
+        convert_button = QPushButton("Select PDF to Convert")  # Button to open file dialog
+        convert_button.clicked.connect(self.open_pdf_dialog)  # Connect button to file dialog function
+        converter_layout.addWidget(convert_button)
+
+        # Set the layout for the converter widget
+        converter_widget.setLayout(converter_layout)
+        self.stacked_widget.addWidget(converter_widget)
 
         return self.stacked_widget
     
+    def open_pdf_dialog(self):
+            # Open a file dialog to select a PDF file for conversion
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getOpenFileName(self, "Select PDF to Convert", "", "PDF Files (*.pdf);;All Files (*)", options=options)
+
+        if file_name:
+            # Call the conversion function here or handle the selected PDF
+            print(f"Selected PDF: {file_name}")
+    
+# Inside ui.py
     def switch_section(self, index):
-        # Switch between different sections (Library, Converter, etc.)
-        self.stacked_widget.setCurrentIndex(index)
+        self.stacked_widget.setCurrentIndex(index)  # Switch the view in the stacked widget
+
+    def convert_pdf_to_epub(self, pdf_file):
+        epub_filename = pdf_file.replace('.pdf', '.epub')
+    
+        try:
+            # Run the calibre ebook-convert command
+            subprocess.run(['ebook-convert', pdf_file, epub_filename], check=True)
+            print(f"Conversion successful: {epub_filename}")
+            # You would then save the converted EPUB to the library folder
+        except Exception as e:
+            print(f"Conversion failed: {e}")
+
 
     def toggle_sidebar(self):
         # Directly set the fixed width of the sidebar (no animation)
