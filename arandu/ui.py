@@ -72,21 +72,15 @@ class MainWindow(QMainWindow):
         return stacked_widget
 
     def toggle_sidebar(self):
-        animation = QPropertyAnimation(self.sidebar_widget, b"minimumWidth")
-        animation.setDuration(300)
-
+        # Directly set the fixed width of the sidebar (no animation)
         if self.sidebar_expanded:
-            animation.setStartValue(self.sidebar_widget.width())
-            animation.setEndValue(50)  # Collapse to 50px
+            self.sidebar_widget.setFixedWidth(50)  # Retract to 50px
             self.sidebar_expanded = False
-            self.update_sidebar_buttons(show_text=False)
+            self.update_sidebar_buttons(show_text=False)  # Show only icons
         else:
-            animation.setStartValue(self.sidebar_widget.width())
-            animation.setEndValue(200)  # Expand to 200px
+            self.sidebar_widget.setFixedWidth(200)  # Expand to 200px
             self.sidebar_expanded = True
-            self.update_sidebar_buttons(show_text=True)
-
-        animation.start()
+            self.update_sidebar_buttons(show_text=True)  # Show text and icons
 
     def update_sidebar_buttons(self, show_text):
         icon_size = QSize(24, 24)
