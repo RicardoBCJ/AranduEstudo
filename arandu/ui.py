@@ -155,10 +155,17 @@ class MainWindow(QMainWindow):
 
         convert_button.setEnabled(True)
 
+    def refresh_library(self):
+        # Clear the current grid layout and reload the books
+        self.library_widget.layout().takeAt(0)  # Clear previous content
+        grid_layout = QGridLayout()
+        load_library_grid(grid_layout, self.library_path)  # Reload books into the grid
+        self.library_widget.layout().addLayout(grid_layout)
+
     def conversion_success(self, epub_path):
         self.message_box.setText(f"Conversion successful: {epub_path}")
         self.message_box.setStandardButtons(QMessageBox.Ok)
-        # self.load_library_books()
+        self.refresh_library()
 
     def conversion_failed(self):
         self.message_box.setText("Conversion failed.")
@@ -169,28 +176,34 @@ class MainWindow(QMainWindow):
 
     def apply_stylesheet(self):
         style_sheet = """
-            QMainWindow {
-                background-color: #2c2c2c;
-            }
-            QPushButton {
-                background-color: #2c2c2c;
-                color: #f0f0f0;
-                border: 1px solid #3e3e3e;
-                border-radius: 15px;
-                padding: 10px;
-                font-size: 14px;
-            }
-            QPushButton:hover {
-                background-color: #3e3e3e;
-            }
-            QLabel {
-                color: white;
-            }
-            QListWidget {
-                background-color: white;
-            }
-            QWidget {
-                background-color: #2c2c2c;  # Ensure consistent background color
-            }
-        """
+        QMainWindow {
+            background-color: #1c1c1c;  /* Matte black background */
+        }
+        QPushButton {
+            background-color: #2c2c2c;
+            color: #f0f0f0;
+            border: 1px solid #3e3e3e;
+            border-radius: 15px;
+            padding: 10px;
+            font-size: 14px;
+            font-family: 'Open Sans';
+        }
+        QPushButton:hover {
+            background-color: #3e3e3e;
+        }
+        QLabel {
+            color: white;
+            font-family: 'Open Sans';
+        }
+        QProgressBar {
+            background-color: grey;
+            border-radius: 5px;
+        }
+        QProgressBar::chunk {
+            background-color: lightblue;
+        }
+        QWidget {
+            background-color: #1c1c1c;  /* Matte black */
+        }
+    """
         self.setStyleSheet(style_sheet)
