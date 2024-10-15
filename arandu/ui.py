@@ -116,7 +116,7 @@ class MainWindow(QMainWindow):
         
         self.stacked_widget.addWidget(library_widget)
 
-        # Create Converter view (as before)
+        # Converter section (unchanged)
         converter_widget = QWidget()
         converter_layout = QVBoxLayout()
         convert_button = QPushButton("Select PDF to Convert")
@@ -126,9 +126,6 @@ class MainWindow(QMainWindow):
         self.stacked_widget.addWidget(converter_widget)
 
         return self.stacked_widget
-
-    # def load_library_books(self):
-    #     load_library_books(self.library_view, self.library_path)
 
     def open_book(self, item):
         epub_file = item.text()
@@ -191,6 +188,9 @@ class MainWindow(QMainWindow):
             }
             QListWidget {
                 background-color: white;
+            }
+            QWidget {
+                background-color: #2c2c2c;  # Ensure consistent background color
             }
         """
         self.setStyleSheet(style_sheet)
