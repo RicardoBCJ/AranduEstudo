@@ -1,10 +1,11 @@
-# arandu/ui.py
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QListWidget, QStackedWidget, QPushButton, QFileDialog, QSplitter, QLabel, QMessageBox  
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QListWidget, QStackedWidget, QPushButton, QFileDialog, QSplitter, QMessageBox, QGridLayout
+from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtGui import QIcon  # Import QIcon
+from conversion_thread import ConversionThread  # Import the thread class
 import os
-from converter import convert_pdf_to_epub, validate_epub, ensure_library_folder
-from library import load_library_books
+from converter import convert_pdf_to_epub, ensure_library_folder, validate_epub
+from library import load_library_grid
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -19,6 +20,10 @@ class MainWindow(QMainWindow):
 
         # Create main splitter
         splitter = QSplitter(Qt.Horizontal)
+
+        # Disable handle interaction
+        splitter.setHandleWidth(0)  # Hide the grey bar (handle)
+        splitter.setChildrenCollapsible(False)  # Disable collapsing by dragging
 
         # Sidebar with navigation
         self.sidebar_widget = self.create_sidebar()
@@ -45,13 +50,20 @@ class MainWindow(QMainWindow):
         sidebar = QWidget()
         sidebar_layout = QVBoxLayout()
 
+        # Set spacing to control the vertical space
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)  # No margins
+        sidebar_layout.setSpacing(10)  # Adjust the spacing between buttons
+
+        # Set the menu icon
+        icon_path_menu = os.path.join(os.path.dirname(__file__), "assets/icons/menu.svg")
         icon_path_library = os.path.join(os.path.dirname(__file__), "assets/icons/library.svg")
         icon_path_converter = os.path.join(os.path.dirname(__file__), "assets/icons/converter.svg")
 
         # Menu toggle button
-        toggle_button = QPushButton("≡ Menu")
-        toggle_button.clicked.connect(self.toggle_sidebar)
-        sidebar_layout.addWidget(toggle_button)
+        self.toggle_button = QPushButton()
+        self.toggle_button.setIcon(QIcon(icon_path_menu))
+        self.toggle_button.clicked.connect(self.toggle_sidebar)
+        sidebar_layout.addWidget(self.toggle_button)
 
         # Library button
         self.library_button = QPushButton("Library")
@@ -71,16 +83,40 @@ class MainWindow(QMainWindow):
 
         return sidebar
 
+    def toggle_sidebar(self):
+        if self.sidebar_widget.width() == 200:
+            # Collapse the sidebar
+            self.sidebar_widget.setFixedWidth(50)
+
+            # Hide text, show only icons
+            self.library_button.setText("")
+            self.converter_button.setText("")
+            self.toggle_button.setText("")
+        else:
+            # Expand the sidebar
+            self.sidebar_widget.setFixedWidth(200)
+
+            # Show text with icons
+            self.toggle_button.setText("Menu")
+            self.library_button.setText("Library")
+            self.converter_button.setText("Converter")
+
     def create_content_widget(self):
         self.stacked_widget = QStackedWidget()
 
-        # Create Library view
-        self.library_view = QListWidget()
-        self.load_library_books()
-        self.library_view.itemClicked.connect(self.open_book)
-        self.stacked_widget.addWidget(self.library_view)
+        # Create a grid layout for the library view
+        library_widget = QWidget()
+        library_layout = QVBoxLayout()
+        
+        grid_layout = QGridLayout()  # Grid layout for books
+        load_library_grid(grid_layout, self.library_path)  # Load books into the grid
 
-        # Create Converter view
+        library_layout.addLayout(grid_layout)
+        library_widget.setLayout(library_layout)
+        
+        self.stacked_widget.addWidget(library_widget)
+
+        # Create Converter view (as before)
         converter_widget = QWidget()
         converter_layout = QVBoxLayout()
         convert_button = QPushButton("Select PDF to Convert")
@@ -91,8 +127,13 @@ class MainWindow(QMainWindow):
 
         return self.stacked_widget
 
-    def load_library_books(self):
-        load_library_books(self.library_view, self.library_path)
+    # def load_library_books(self):
+    #     load_library_books(self.library_view, self.library_path)
+
+    def open_book(self, item):
+        epub_file = item.text()
+        epub_path = os.path.join(self.library_path, epub_file)
+        print(f"Opening book: {epub_path}")
 
     def open_pdf_dialog(self):
         convert_button = self.sender()
@@ -120,7 +161,7 @@ class MainWindow(QMainWindow):
     def conversion_success(self, epub_path):
         self.message_box.setText(f"Conversion successful: {epub_path}")
         self.message_box.setStandardButtons(QMessageBox.Ok)
-        self.load_library_books()
+        # self.load_library_books()
 
     def conversion_failed(self):
         self.message_box.setText("Conversion failed.")
@@ -128,12 +169,6 @@ class MainWindow(QMainWindow):
 
     def switch_section(self, index):
         self.stacked_widget.setCurrentIndex(index)
-
-    def toggle_sidebar(self):
-        if self.sidebar_widget.width() == 200:
-            self.sidebar_widget.setFixedWidth(50)
-        else:
-            self.sidebar_widget.setFixedWidth(200)
 
     def apply_stylesheet(self):
         style_sheet = """
@@ -159,20 +194,3 @@ class MainWindow(QMainWindow):
             }
         """
         self.setStyleSheet(style_sheet)
-
-class ConversionThread(QThread):
-    conversion_done = pyqtSignal(str)  # Signal emitted when conversion is done
-    conversion_failed = pyqtSignal()  # Signal emitted if conversion fails
-
-    def __init__(self, pdf_file, output_dir):
-        super().__init__()
-        self.pdf_file = pdf_file
-        self.output_dir = output_dir
-
-    def run(self):
-        # Perform the conversion in the background
-        epub_path = convert_pdf_to_epub(self.pdf_file, self.output_dir)
-        if epub_path:
-            self.conversion_done.emit(epub_path)
-        else:
-            self.conversion_failed.emit()
