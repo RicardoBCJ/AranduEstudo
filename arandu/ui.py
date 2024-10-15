@@ -1,7 +1,7 @@
 # arandu/ui.py
-from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QListWidget, QStackedWidget, QPushButton, QFileDialog, QSplitter
+from PyQt5.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QHBoxLayout, QListWidget, QStackedWidget, QPushButton, QFileDialog, QSplitter, QLabel, QMessageBox  
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QSize, Qt  # Ensure Qt is imported for alignment and other Qt features
+from PyQt5.QtCore import QSize, Qt, QThread, pyqtSignal
 import os
 from converter import convert_pdf_to_epub, validate_epub, ensure_library_folder
 from library import load_library_books
@@ -15,10 +15,9 @@ class MainWindow(QMainWindow):
 
         # Path to the library folder
         self.library_path = os.path.join(os.path.dirname(__file__), "library")
-        ensure_library_folder(self.library_path)  # Ensure library folder exists
+        ensure_library_folder(self.library_path)
 
-        # Create main layout and sidebar
-        layout = QHBoxLayout()
+        # Create main splitter
         splitter = QSplitter(Qt.Horizontal)
 
         # Sidebar with navigation
@@ -29,19 +28,23 @@ class MainWindow(QMainWindow):
         self.content_widget = self.create_content_widget()
         splitter.addWidget(self.content_widget)
 
+        # Set stretch factor so content uses more space
+        splitter.setStretchFactor(1, 4)
+
+        # Main layout
+        layout = QHBoxLayout()
         layout.addWidget(splitter)
+
         container = QWidget()
         container.setLayout(layout)
         self.setCentralWidget(container)
 
-        # Apply the stylesheet for appearance
         self.apply_stylesheet()
 
     def create_sidebar(self):
         sidebar = QWidget()
         sidebar_layout = QVBoxLayout()
 
-        # Icons (absolute paths)
         icon_path_library = os.path.join(os.path.dirname(__file__), "assets/icons/library.svg")
         icon_path_converter = os.path.join(os.path.dirname(__file__), "assets/icons/converter.svg")
 
@@ -71,9 +74,9 @@ class MainWindow(QMainWindow):
     def create_content_widget(self):
         self.stacked_widget = QStackedWidget()
 
-        # Create Library view (QListWidget to display books)
+        # Create Library view
         self.library_view = QListWidget()
-        self.load_library_books()  # Load the books from the library folder
+        self.load_library_books()
         self.library_view.itemClicked.connect(self.open_book)
         self.stacked_widget.addWidget(self.library_view)
 
@@ -89,40 +92,48 @@ class MainWindow(QMainWindow):
         return self.stacked_widget
 
     def load_library_books(self):
-        # Load the books from the library folder into the QListWidget
         load_library_books(self.library_view, self.library_path)
 
     def open_pdf_dialog(self):
-        # Open file dialog to select a PDF or EPUB file
+        convert_button = self.sender()
+        convert_button.setEnabled(False)
+
         options = QFileDialog.Options()
         file_name, _ = QFileDialog.getOpenFileName(self, "Select PDF or EPUB", "", "PDF Files (*.pdf);;EPUB Files (*.epub);;All Files (*)", options=options)
 
         if file_name:
-            if file_name.endswith('.pdf'):
-                epub_path = convert_pdf_to_epub(file_name, self.library_path)
-                if epub_path:
-                    print(f"PDF converted to EPUB: {epub_path}")
-                    self.load_library_books()  # Reload library after conversion
-            elif file_name.endswith('.epub'):
-                if validate_epub(file_name):
-                    print(f"Valid EPUB: {file_name}")
-                    self.load_library_books()  # Add the EPUB to the library
+            self.message_box = QMessageBox(self)
+            self.message_box.setIcon(QMessageBox.Information)
+            self.message_box.setWindowTitle("Converting File")
+            self.message_box.setText("Converting file, please wait...")
+            self.message_box.setStandardButtons(QMessageBox.NoButton)
+            self.message_box.show()
 
-    def open_book(self, item):
-        epub_file = item.text()
-        epub_path = os.path.join(self.library_path, epub_file)
-        print(f"Opening book: {epub_path}")
-        # Implement reader functionality here
+            # Run the conversion in the background
+            self.thread = ConversionThread(file_name, self.library_path)
+            self.thread.conversion_done.connect(self.conversion_success)
+            self.thread.conversion_failed.connect(self.conversion_failed)
+            self.thread.start()
+
+        convert_button.setEnabled(True)
+
+    def conversion_success(self, epub_path):
+        self.message_box.setText(f"Conversion successful: {epub_path}")
+        self.message_box.setStandardButtons(QMessageBox.Ok)
+        self.load_library_books()
+
+    def conversion_failed(self):
+        self.message_box.setText("Conversion failed.")
+        self.message_box.setStandardButtons(QMessageBox.Ok)
 
     def switch_section(self, index):
         self.stacked_widget.setCurrentIndex(index)
 
     def toggle_sidebar(self):
-        # Simple sidebar toggle without animation for now
         if self.sidebar_widget.width() == 200:
-            self.sidebar_widget.setFixedWidth(50)  # Collapse to 50px
+            self.sidebar_widget.setFixedWidth(50)
         else:
-            self.sidebar_widget.setFixedWidth(200)  # Expand to 200px
+            self.sidebar_widget.setFixedWidth(200)
 
     def apply_stylesheet(self):
         style_sheet = """
@@ -137,20 +148,31 @@ class MainWindow(QMainWindow):
                 padding: 10px;
                 font-size: 14px;
             }
-            QPushButton#menuButton {
-                border: none;
-                font-size: 16px;
-                padding: 5px;
-            }
             QPushButton:hover {
                 background-color: #3e3e3e;
             }
-            QTextEdit {
-                background-color: #3e3e3e;
-                border: 1px solid #d3d3d3;
-                padding: 10px;
-                font-size: 16px;
-                color: #ffffff;
+            QLabel {
+                color: white;
+            }
+            QListWidget {
+                background-color: white;
             }
         """
         self.setStyleSheet(style_sheet)
+
+class ConversionThread(QThread):
+    conversion_done = pyqtSignal(str)  # Signal emitted when conversion is done
+    conversion_failed = pyqtSignal()  # Signal emitted if conversion fails
+
+    def __init__(self, pdf_file, output_dir):
+        super().__init__()
+        self.pdf_file = pdf_file
+        self.output_dir = output_dir
+
+    def run(self):
+        # Perform the conversion in the background
+        epub_path = convert_pdf_to_epub(self.pdf_file, self.output_dir)
+        if epub_path:
+            self.conversion_done.emit(epub_path)
+        else:
+            self.conversion_failed.emit()
